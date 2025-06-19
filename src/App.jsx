@@ -4,6 +4,7 @@ import Home from "./pages/Home";
 import Profile from "./pages/Profile";
 import AdminDashboard from "./pages/AdminDashboard";
 import Surprise from "./pages/Surprise";
+import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from "./context/ThemeContext";
 import { useAuth } from './context/AuthContext';
 import './App.css';
@@ -22,6 +23,7 @@ function App() {
   return (
     <ThemeProvider>
       <BrowserRouter>
+        <Toaster position="top-right" reverseOrder={false} />
         <div className="min-h-screen bg-beige text-maroon dark:bg-gray-900 dark:text-beige">
           <Navbar />
           <main className="p-4 sm:p-6">

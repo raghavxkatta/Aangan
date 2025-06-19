@@ -3,8 +3,15 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
 
+import { AuthProvider } from './context/AuthContext'; // ✅ Add this
+import { BrowserRouter } from 'react-router-dom';     // ✅ Wrap router here if not done in App
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    <BrowserRouter>
+      <AuthProvider>   {/* ✅ Critical */}
+        <App />
+      </AuthProvider>
+    </BrowserRouter>
   </React.StrictMode>,
 );
