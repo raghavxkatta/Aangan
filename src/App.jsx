@@ -1,74 +1,94 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import Navbar from "./components/Navbar";
-import Home from "./pages/Home";
-import Profile from "./pages/Profile";
-import AdminDashboard from "./pages/AdminDashboard";
-import Surprise from "./pages/Surprise";
-import { Toaster } from 'react-hot-toast';
-import { ThemeProvider } from "./context/ThemeContext";
-import { useAuth } from './context/AuthContext';
-import './App.css';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
+import { initializeTheme } from './utils/theme';
+import ProtectedRoute from './components/ProtectedRoute';
 
-function ProtectedRoute({ children, adminOnly }) {
-  const { user, role } = useAuth();
+// Pages
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import Home from './pages/Home';
+import Profile from './pages/Profile';
+import AdminDashboard from './pages/AdminDashboard';
 
-  if (!user) return <Navigate to="/login" />;
-  if (adminOnly && role !== 'admin') return <Navigate to="/home" />;
-  if (!adminOnly && role !== 'user') return <Navigate to="/admin-dashboard" />;
+// Initialize theme on app start
+initializeTheme();
 
-  return children;
-}
+const AppRoutes = () => {
+  const { user, userRole, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 to-orange-100 dark:from-gray-900 dark:to-gray-800">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-4 border-amber-600 mx-auto mb-4"></div>
+          <p className="text-xl text-gray-600 dark:text-gray-300">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Routes>
+      {/* Public routes */}
+      <Route 
+        path="/login" 
+        element={user ? <Navigate to={userRole === 'admin' ? '/admin-dashboard' : '/home'} replace /> : <Login />} 
+      />
+      <Route 
+        path="/signup" 
+        element={user ? <Navigate to={userRole === 'admin' ? '/admin-dashboard' : '/home'} replace /> : <Signup />} 
+      />
+      
+      {/* Protected routes */}
+      <Route 
+        path="/home" 
+        element={
+          <ProtectedRoute>
+            <Home />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/profile" 
+        element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/admin-dashboard" 
+        element={
+          <ProtectedRoute>
+            <AdminDashboard />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Default route */}
+      <Route 
+        path="/" 
+        element={
+          user ? 
+            <Navigate to={userRole === 'admin' ? '/admin-dashboard' : '/home'} replace /> :
+            <Navigate to="/login" replace />
+        } 
+      />
+    </Routes>
+  );
+};
 
 function App() {
   return (
     <ThemeProvider>
-      <BrowserRouter>
-        <Toaster position="top-right" reverseOrder={false} />
-        <div className="min-h-screen bg-beige text-maroon dark:bg-gray-900 dark:text-beige">
-          <Navbar />
-          <main className="p-4 sm:p-6">
-            <Routes>
-              {/* Public or shared route (Home) */}
-              <Route path="/" element={
-                <ProtectedRoute>
-                  <Home />
-                </ProtectedRoute>
-              } />
-
-              <Route path="/home" element={
-                <ProtectedRoute>
-                  <Home />
-                </ProtectedRoute>
-              } />
-
-              {/* Profile: user-only */}
-              <Route path="/profile" element={
-                <ProtectedRoute adminOnly={false}>
-                  <Profile />
-                </ProtectedRoute>
-              } />
-
-              {/* Admin dashboard: admin-only */}
-              <Route path="/admin-dashboard" element={
-                <ProtectedRoute adminOnly={true}>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              } />
-
-              {/* Surprise popup: any logged-in user */}
-              <Route path="/surprise" element={
-                <ProtectedRoute>
-                  <Surprise />
-                </ProtectedRoute>
-              } />
-            </Routes>
-          </main>
-
-          <footer className="text-center p-4 text-sm text-mustard">
-            Built by Binary Brains @ BrandIT 2.0
-          </footer>
-        </div>
-      </BrowserRouter>
+      <AuthProvider>
+        <Router>
+          <div className="App">
+            <AppRoutes />
+          </div>
+        </Router>
+      </AuthProvider>
     </ThemeProvider>
   );
 }
