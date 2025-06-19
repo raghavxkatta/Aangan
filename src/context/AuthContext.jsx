@@ -7,7 +7,7 @@ import {
     signOut
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db, googleProvider } from '../firebase/config';
+import { auth, db } from '../firebase/config';
 
 const AuthContext = createContext();
 
@@ -63,23 +63,7 @@ export const AuthProvider = ({ children }) => {
         return result;
     };
 
-    const loginWithGoogle = async (role = 'user') => {
-        const result = await signInWithPopup(auth, googleProvider);
-
-        // Check if user exists, if not create user document
-        const userDoc = await getDoc(doc(db, 'users', result.user.uid));
-        if (!userDoc.exists()) {
-            await setDoc(doc(db, 'users', result.user.uid), {
-                name: result.user.displayName,
-                email: result.user.email,
-                role,
-                bio: '',
-                createdAt: new Date().toISOString()
-            });
-        }
-
-        return result;
-    };
+    
 
     const logout = async () => {
         await signOut(auth);
@@ -90,7 +74,6 @@ export const AuthProvider = ({ children }) => {
         userRole,
         login,
         signup,
-        loginWithGoogle,
         logout,
         loading
     };
