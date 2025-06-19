@@ -1,40 +1,103 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { auth, db } from '../firebase/config';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import {
+    onAuthStateChanged,
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    signInWithPopup,
+    signOut
+} from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db, googleProvider } from '../firebase/config';
 
 const AuthContext = createContext();
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (!context) {
+        throw new Error('useAuth must be used within an AuthProvider');
+    }
+    return context;
+};
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [role, setRole] = useState(null);
+    const [userRole, setUserRole] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-            if (firebaseUser) {
-                const docRef = doc(db, 'users', firebaseUser.uid);
-                const docSnap = await getDoc(docRef);
-
-                if (docSnap.exists()) {
-                    setUser(firebaseUser);
-                    setRole(docSnap.data().role);
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                setUser(user);
+                // Fetch user role from Firestore
+                const userDoc = await getDoc(doc(db, 'users', user.uid));
+                if (userDoc.exists()) {
+                    setUserRole(userDoc.data().role);
                 }
             } else {
                 setUser(null);
-                setRole(null);
+                setUserRole(null);
             }
             setLoading(false);
         });
 
-        return () => unsubscribe();
+        return unsubscribe;
     }, []);
 
+    const login = async (email, password) => {
+        const result = await signInWithEmailAndPassword(auth, email, password);
+        return result;
+    };
+
+    const signup = async (email, password, name, role) => {
+        const result = await createUserWithEmailAndPassword(auth, email, password);
+
+        // Save user data to Firestore
+        await setDoc(doc(db, 'users', result.user.uid), {
+            name,
+            email,
+            role,
+            bio: '',
+            createdAt: new Date().toISOString()
+        });
+
+        return result;
+    };
+
+    const loginWithGoogle = async (role = 'user') => {
+        const result = await signInWithPopup(auth, googleProvider);
+
+        // Check if user exists, if not create user document
+        const userDoc = await getDoc(doc(db, 'users', result.user.uid));
+        if (!userDoc.exists()) {
+            await setDoc(doc(db, 'users', result.user.uid), {
+                name: result.user.displayName,
+                email: result.user.email,
+                role,
+                bio: '',
+                createdAt: new Date().toISOString()
+            });
+        }
+
+        return result;
+    };
+
+    const logout = async () => {
+        await signOut(auth);
+    };
+
+    const value = {
+        user,
+        userRole,
+        login,
+        signup,
+        loginWithGoogle,
+        logout,
+        loading
+    };
+
     return (
-        <AuthContext.Provider value={{ user, role,loading }}>
-            {!loading && children}
+        <AuthContext.Provider value={value}>
+            {children}
         </AuthContext.Provider>
     );
 };
