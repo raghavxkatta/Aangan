@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import { showToast } from '../utils/toast';
 import { Link, useNavigate } from 'react-router-dom';
 
+const ADMIN_SECRET = "aangan@admin"; // 🔐 Change this as needed
+
 const Signup = () => {
     const [formData, setFormData] = useState({
         name: '',
@@ -11,7 +13,9 @@ const Signup = () => {
         password: '',
         confirmPassword: '',
         role: 'user',
+        adminAccessCode: '',
     });
+
     const [loading, setLoading] = useState(false);
     const { signup } = useAuth();
     const navigate = useNavigate();
@@ -26,8 +30,15 @@ const Signup = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (formData.password !== formData.confirmPassword) {
+        const { name, email, password, confirmPassword, role, adminAccessCode } = formData;
+
+        if (password !== confirmPassword) {
             showToast('Passwords do not match', 'error');
+            return;
+        }
+
+        if (role === 'admin' && adminAccessCode !== ADMIN_SECRET) {
+            showToast('Invalid admin access code', 'error');
             return;
         }
 
@@ -35,15 +46,14 @@ const Signup = () => {
 
         try {
             await signup({
-                email: formData.email,
-                password: formData.password,
-                fullName: formData.name,
-                role: formData.role,
+                email,
+                password,
+                fullName: name,
+                role,
             });
 
             showToast('Account created successfully!', 'success');
-
-            navigate(formData.role === 'admin' ? '/admin-dashboard' : '/home');
+            navigate(role === 'admin' ? '/admin-dashboard' : '/home');
         } catch (error) {
             console.error('Signup failed:', error.code, error.message);
             showToast(error.message || 'Failed to create account', 'error');
@@ -104,10 +114,24 @@ const Signup = () => {
                         </select>
                     </div>
 
+                    {formData.role === 'admin' && (
+                        <div>
+                            <label className="block text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Admin Access Code
+                            </label>
+                            <input
+                                type="password"
+                                name="adminAccessCode"
+                                value={formData.adminAccessCode}
+                                onChange={handleChange}
+                                className="w-full px-4 py-3 text-lg border rounded-lg focus:ring-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                required
+                            />
+                        </div>
+                    )}
+
                     <div>
-                        <label className="block text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Password
-                        </label>
+                        <label className="block text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">Password</label>
                         <input
                             type="password"
                             name="password"
@@ -119,9 +143,7 @@ const Signup = () => {
                     </div>
 
                     <div>
-                        <label className="block text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Confirm Password
-                        </label>
+                        <label className="block text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">Confirm Password</label>
                         <input
                             type="password"
                             name="confirmPassword"
