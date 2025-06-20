@@ -3,7 +3,6 @@ import {
     onAuthStateChanged,
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
-    signInWithPopup,
     signOut
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -13,9 +12,7 @@ const AuthContext = createContext();
 
 export const useAuth = () => {
     const context = useContext(AuthContext);
-    if (!context) {
-        throw new Error('useAuth must be used within an AuthProvider');
-    }
+    if (!context) throw new Error("useAuth must be used within an AuthProvider");
     return context;
 };
 
@@ -24,14 +21,16 @@ export const AuthProvider = ({ children }) => {
     const [userRole, setUserRole] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    // 🔁 Watch for login/logout
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                setUser(user);
-                // Fetch user role from Firestore
-                const userDoc = await getDoc(doc(db, 'users', user.uid));
+        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+            if (currentUser) {
+                setUser(currentUser);
+                const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
                 if (userDoc.exists()) {
                     setUserRole(userDoc.data().role);
+                } else {
+                    setUserRole('user'); // default role fallback
                 }
             } else {
                 setUser(null);
@@ -43,44 +42,28 @@ export const AuthProvider = ({ children }) => {
         return unsubscribe;
     }, []);
 
-    const login = async (email, password) => {
-        const result = await signInWithEmailAndPassword(auth, email, password);
-        return result;
-    };
-
-    const signup = async (email, password, name, role) => {
-        const result = await createUserWithEmailAndPassword(auth, email, password);
-
-        // Save user data to Firestore
-        await setDoc(doc(db, 'users', result.user.uid), {
-            name,
+    // 🔐 Sign up with role
+    const signup = async ({ email, password, fullName, role }) => {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await setDoc(doc(db, 'users', userCredential.user.uid), {
+            fullName,
             email,
             role,
-            bio: '',
-            createdAt: new Date().toISOString()
+            createdAt: new Date()
         });
-
-        return result;
     };
 
-    
+    const login = async (email, password) => {
+        return await signInWithEmailAndPassword(auth, email, password);
+    };
 
     const logout = async () => {
-        await signOut(auth);
-    };
-
-    const value = {
-        user,
-        userRole,
-        login,
-        signup,
-        logout,
-        loading
+        return await signOut(auth);
     };
 
     return (
-        <AuthContext.Provider value={value}>
-            {children}
+        <AuthContext.Provider value={{ user, userRole, signup, login, logout, loading }}>
+            {!loading && children}
         </AuthContext.Provider>
     );
 };
