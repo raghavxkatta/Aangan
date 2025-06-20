@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { showToast } from '../utils/toast';
 import { Link, useNavigate } from 'react-router-dom';
 
-const ADMIN_SECRET = "aangan@admin"; // 🔐 Change this as needed
+const ADMIN_SECRET = "2233"; // 🔐 Change this as needed
 
 const Signup = () => {
     const [formData, setFormData] = useState({
